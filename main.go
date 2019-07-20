@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	_ "github.com/lib/pq"
-	domain "github.com/solairerove/linden-honey-go-scrapper/domain"
+	scrapper "github.com/solairerove/linden-honey-go-scrapper/scrapper"
 )
 
 // TODO  to properties
@@ -27,18 +27,5 @@ func main() {
 	}
 	defer db.Close()
 
-	song := domain.Song{
-		Title:  "Something",
-		Link:   "pff",
-		Author: "Letov",
-		Album:  "Experiments",
-		Verses: []domain.Verse{
-			domain.Verse{
-				Ordinal: 1,
-				Data:    "?",
-			},
-		},
-	}
-
-	song.SaveSong(db)
+	scrapper.ScrapLetov(db)
 }
