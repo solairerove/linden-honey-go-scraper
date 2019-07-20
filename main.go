@@ -3,36 +3,53 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
+
+	uuid "github.com/satori/go.uuid"
 
 	_ "github.com/lib/pq"
 )
 
-// to properties
-const username = "linden-honey-user"
-const password = "linden-honey-pass"
-const dbname = "linden-honey"
-
-var err error
-
-// to another package nad export plz
-type connection struct {
-	DB *sql.DB
-}
-
-func (db *connection) connect(user, pass, schema string) {
-
-	connectionString := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", user, pass, schema)
-
-	// rewrite
-	db.DB, err = sql.Open("postgres", connectionString)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+// TODO  to properties
+const (
+	dbUsername = "linden-honey-user"
+	dbPassword = "linden-honey-pass"
+	dbName     = "linden-honey"
+	dbPort     = "5430"
+)
 
 func main() {
 
-	conn := connection{}
-	conn.connect(username, password, dbname)
+	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s port=%s sslmode=disable",
+		dbUsername, dbPassword, dbName, dbPort)
+
+	db, err := sql.Open("postgres", dbinfo)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer db.Close()
+
+	// song := domain.Song{
+	// 	Title:  "Something",
+	// 	Link:   "pff",
+	// 	Author: "Letov",
+	// 	Album:  "Experiments",
+	// 	Verses: []domain.Verse{
+	// 		domain.Verse{
+	// 			Ordinal: 1,
+	// 			Data:    "?",
+	// 		},
+	// 	},
+	// }
+
+	var id uuid.UUID
+	err = db.QueryRow(`INSERT INTO songs(title, link, author, album) 
+											VALUES($1, $2, $3, $4) 
+											RETURNING id`,
+		"s.Title", "s.Link", "s.Author", "s.Album").Scan(&id)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(id)
 }

@@ -5,7 +5,7 @@ services:
     container_name: linden-honey-postgres
     image: postgres:11.4-alpine
     ports:
-      - "5432:5432"
+      - 5430:5432
     environment:
       - POSTGRES_USER=linden-honey-user
       - POSTGRES_PASSWORD=linden-honey-pass
