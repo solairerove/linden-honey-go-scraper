@@ -87,7 +87,7 @@ func ScrapLetov(db *sql.DB) {
 
 	// On every a element which has `div[id=cont]` attribute call callback
 	songCollector.OnHTML(`div[id=cont]`, func(e *colly.HTMLElement) {
-		// log.Println("Song link found", e.Request.URL)
+		log.Println("Song link found", e.Request.URL)
 
 		song.Link = e.Request.URL.String()
 
@@ -143,8 +143,12 @@ func ScrapLetov(db *sql.DB) {
 			for _, s := range str {
 				result := regexp.MustCompile(`&#39;`).ReplaceAllString(s, "'")
 
+				// &nbsp;
+				// &#160;
+				// &#xA0;
+				// ⌥ Opt+Space
 				// non suka breaking space replaced by human readble space
-				trimmedResult := regexp.MustCompile(" ").ReplaceAllString(result, " ")
+				trimmedResult := regexp.MustCompile(" ").ReplaceAllString(result, " ")
 				decodedResult := decodeWindows1251([]byte(trimmedResult))
 				dirtyVerses = append(dirtyVerses, string(decodedResult)+"\n")
 
