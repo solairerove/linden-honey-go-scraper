@@ -1,7 +1,6 @@
 package scrapper
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,6 +10,12 @@ import (
 	"github.com/gocolly/colly"
 	domain "github.com/solairerove/linden-honey-go-scrapper/domain"
 	"golang.org/x/text/encoding/charmap"
+)
+
+const (
+	allowedDomain = "www.gr-oborona.ru"
+	textsPage     = "http://www.gr-oborona.ru/texts/"
+	maxDepth      = 1
 )
 
 // TODO move to separate file
@@ -39,20 +44,20 @@ func (r *myRexexp) findStringSubmatchMap(s string) map[string]string {
 }
 
 // ScrapLetov poor Letov
-func ScrapLetov(db *sql.DB) {
+func ScrapLetov() {
 
 	// Instantiate default collector
 	c := colly.NewCollector(
 		// Visit only domain: www.gr-oborona.ru
-		colly.AllowedDomains("www.gr-oborona.ru"),
+		colly.AllowedDomains(allowedDomain),
 
 		// MaxDepth is 1, so only the links on the scraped page
 		// is visited, and no further links are followed
-		colly.MaxDepth(1),
+		colly.MaxDepth(maxDepth),
 
 		// Visit only root url and urls which start with "text" on www.gr-oborona.ru
 		colly.URLFilters(
-			regexp.MustCompile("http://www.gr-oborona.ru/texts/"),
+			regexp.MustCompile(textsPage),
 		),
 	)
 
@@ -91,9 +96,10 @@ func ScrapLetov(db *sql.DB) {
 
 		song.Link = e.Request.URL.String()
 
+		// for each header element
 		e.ForEach("p", func(_ int, elem *colly.HTMLElement) {
 			decodedSmth := decodeWindows1251([]byte(elem.Text))
-			log.Printf("Find smth from loop %s", decodedSmth)
+			log.Printf("Just print from song header %s", decodedSmth)
 
 			// substring after Автор:
 			if strings.Contains(string(decodedSmth), "Автор") {
@@ -138,7 +144,6 @@ func ScrapLetov(db *sql.DB) {
 		// split to separated verses
 		dirtyVerses := make([]string, 0)
 		for _, e := range unparsedLyrics {
-			log.Print("\n")
 			str := regexp.MustCompile(`<br/>`).Split(e, -1)
 			for _, s := range str {
 				result := regexp.MustCompile(`&#39;`).ReplaceAllString(s, "'")
@@ -167,13 +172,11 @@ func ScrapLetov(db *sql.DB) {
 		song.Verses = verses
 
 		marshaledSong, _ := json.Marshal(song)
-		log.Printf("Prepare to save next Song -> %s", string(marshaledSong))
 
-		song.SaveSong(db)
+		log.Printf("Marshaled song: %s\n\n", string(marshaledSong))
 	})
 
-	// fixme
-	c.Visit("http://www.gr-oborona.ru/texts/")
+	c.Visit(textsPage)
 }
 
 // decode shitty cp1251 to human readalbe utf-8
