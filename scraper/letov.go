@@ -46,6 +46,8 @@ func (r *myRexexp) findStringSubmatchMap(s string) map[string]string {
 // ScrapLetov poor Letov
 func ScrapLetov() {
 
+	var songs []string
+
 	// Instantiate default collector
 	c := colly.NewCollector(
 		// Visit only domain: www.gr-oborona.ru
@@ -173,10 +175,19 @@ func ScrapLetov() {
 
 		marshaledSong, _ := json.Marshal(song)
 
-		log.Printf("Marshaled song: %s\n\n", string(marshaledSong))
+		songs = append(songs, string(marshaledSong))
 	})
 
 	c.Visit(textsPage)
+
+	// log.Println("All songs", songs)
+
+	// for _, s := range songs {
+	// 	err := ioutil.WriteFile("output.json", []byte(s), 0644)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// }
 }
 
 // decode shitty cp1251 to human readalbe utf-8
