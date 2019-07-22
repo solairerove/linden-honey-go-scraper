@@ -1,7 +1,6 @@
 package scrapper
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"regexp"
@@ -44,9 +43,9 @@ func (r *myRexexp) findStringSubmatchMap(s string) map[string]string {
 }
 
 // ScrapLetov poor Letov
-func ScrapLetov() {
+func ScrapLetov() []domain.Song {
 
-	var songs []string
+	var songs []domain.Song
 
 	// Instantiate default collector
 	c := colly.NewCollector(
@@ -173,12 +172,12 @@ func ScrapLetov() {
 
 		song.Verses = verses
 
-		marshaledSong, _ := json.Marshal(song)
-
-		songs = append(songs, string(marshaledSong))
+		songs = append(songs, song)
 	})
 
 	c.Visit(textsPage)
+
+	return songs
 
 	// log.Println("All songs", songs)
 
