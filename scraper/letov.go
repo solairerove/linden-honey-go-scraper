@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly"
-	domain "github.com/solairerove/linden-honey-go-scraper/domain"
+	res "github.com/solairerove/linden-honey-go-scraper/response"
 	"golang.org/x/text/encoding/charmap"
 )
 
@@ -44,10 +44,10 @@ func (r *myRexexp) findStringSubmatchMap(s string) map[string]string {
 }
 
 // ScrapLetov poor Letov
-func ScrapLetov() []domain.Song {
+func ScrapLetov() []res.Song {
 
-	var song domain.Song
-	var songs []domain.Song
+	var song res.Song
+	var songs []res.Song
 
 	// Instantiate default collector
 	c := colly.NewCollector(
@@ -89,6 +89,8 @@ func ScrapLetov() []domain.Song {
 		// Only those links are visited which are in AllowedDomains
 		songCollector.Visit(e.Request.AbsoluteURL(link))
 	})
+
+	c.Visit(textsPage)
 
 	// Before making a request print "Visiting ..."
 	c.OnRequest(func(r *colly.Request) {
@@ -170,10 +172,10 @@ func ScrapLetov() []domain.Song {
 			dirtyVerses = append(dirtyVerses, "\n\n")
 		}
 
-		verses := make([]domain.Verse, 0)
+		verses := make([]res.Verse, 0)
 
 		for i, v := range dirtyVerses {
-			verses = append(verses, domain.Verse{Ordinal: i, Data: v})
+			verses = append(verses, res.Verse{Ordinal: i, Data: v})
 		}
 
 		song.Verses = verses
