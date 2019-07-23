@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/gocolly/colly"
@@ -57,7 +58,7 @@ func ScrapLetov() []res.Song {
 		// MaxDepth is 1, so only the links on the scraped page
 		// is visited, and no further links are followed
 		colly.MaxDepth(maxDepth),
-		// colly.Async(true),
+		colly.Async(true),
 
 		// Visit only root url and urls which start with "text" on www.gr-oborona.ru
 		colly.URLFilters(
@@ -70,7 +71,7 @@ func ScrapLetov() []res.Song {
 	songCollector := c.Clone()
 
 	// Limit the maximum parallelism to cpu num
-	// c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
+	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
 
 	// On every a element which has href attribute call callback
 	c.OnHTML(`a[href]`, func(e *colly.HTMLElement) {
@@ -85,8 +86,6 @@ func ScrapLetov() []res.Song {
 		decodedSongTitle := decodeWindows1251([]byte(e.Text))
 		log.Printf("Song title found: %q\n", decodedSongTitle)
 
-		song.Title = string(decodedSongTitle)
-
 		// Visit link found on page
 		// Only those links are visited which are in AllowedDomains
 		songCollector.Visit(e.Request.AbsoluteURL(link))
@@ -98,7 +97,16 @@ func ScrapLetov() []res.Song {
 	})
 
 	// Limit the maximum parallelism to cpu num
-	// songCollector.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
+	songCollector.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
+
+	// On every a element which has `div[id=headers]` attribute call callback
+	// to fetch song title
+	songCollector.OnHTML(`div[id=headers]`, func(e *colly.HTMLElement) {
+		title := e.ChildText("h3")
+		decodedTitle := decodeWindows1251([]byte(title))
+		song.Title = string(decodedTitle)
+	})
+
 	// On every a element which has `div[id=cont]` attribute call callback
 	songCollector.OnHTML(`div[id=cont]`, func(e *colly.HTMLElement) {
 		// log.Println("Song link found", e.Request.URL)
@@ -181,19 +189,15 @@ func ScrapLetov() []res.Song {
 		song.Verses = verses
 		songs = append(songs, song)
 
-		if len(songs) == 10 {
-			return
-		}
-
-		log.Println(len(songs))
+		log.Println("songs:", len(songs))
 	})
 
 	// Start scraping on http://www.gr-oborona.ru/texts/
 	c.Visit(textsPage)
 
 	// Wait until threads are finished
-	// c.Wait()
-	// songCollector.Wait()
+	c.Wait()
+	songCollector.Wait()
 
 	return songs
 }
