@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	scraper "github.com/solairerove/linden-honey-go-scrapper/scraper"
+	scraper "github.com/solairerove/linden-honey-go-scraper/scraper"
 
 	"github.com/gorilla/mux"
 )

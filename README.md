@@ -16,6 +16,11 @@ Start application:
 go run main.go
 ```
 
+### Rest API
+
+* `/` hello
+* `/songs` letov songs
+
 ### Docker
 
 Bootstrap db using docker-compose:

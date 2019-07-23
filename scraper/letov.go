@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly"
-	domain "github.com/solairerove/linden-honey-go-scrapper/domain"
+	domain "github.com/solairerove/linden-honey-go-scraper/domain"
 	"golang.org/x/text/encoding/charmap"
 )
 
