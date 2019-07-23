@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/gocolly/colly"
@@ -45,6 +46,7 @@ func (r *myRexexp) findStringSubmatchMap(s string) map[string]string {
 // ScrapLetov poor Letov
 func ScrapLetov() []domain.Song {
 
+	var song domain.Song
 	var songs []domain.Song
 
 	// Instantiate default collector
@@ -55,6 +57,7 @@ func ScrapLetov() []domain.Song {
 		// MaxDepth is 1, so only the links on the scraped page
 		// is visited, and no further links are followed
 		colly.MaxDepth(maxDepth),
+		colly.Async(true),
 
 		// Visit only root url and urls which start with "text" on www.gr-oborona.ru
 		colly.URLFilters(
@@ -64,7 +67,8 @@ func ScrapLetov() []domain.Song {
 
 	songCollector := c.Clone()
 
-	var song domain.Song
+	// Limit the maximum parallelism to cpu num
+	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
 
 	// On every a element which has href attribute call callback
 	c.OnHTML(`a[href]`, func(e *colly.HTMLElement) {
@@ -91,16 +95,18 @@ func ScrapLetov() []domain.Song {
 		fmt.Println("Visiting", r.URL.String())
 	})
 
+	// Limit the maximum parallelism to cpu num
+	songCollector.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
 	// On every a element which has `div[id=cont]` attribute call callback
 	songCollector.OnHTML(`div[id=cont]`, func(e *colly.HTMLElement) {
-		log.Println("Song link found", e.Request.URL)
+		// log.Println("Song link found", e.Request.URL)
 
 		song.Link = e.Request.URL.String()
 
 		// for each header element
 		e.ForEach("p", func(_ int, elem *colly.HTMLElement) {
 			decodedSmth := decodeWindows1251([]byte(elem.Text))
-			log.Printf("Just print from song header %s", decodedSmth)
+			// log.Printf("Just print from song header %s", decodedSmth)
 
 			// substring after Автор:
 			if strings.Contains(string(decodedSmth), "Автор") {
@@ -158,7 +164,7 @@ func ScrapLetov() []domain.Song {
 				decodedResult := decodeWindows1251([]byte(trimmedResult))
 				dirtyVerses = append(dirtyVerses, string(decodedResult)+"\n")
 
-				log.Printf("Lyrics found %s", string(decodedResult))
+				// log.Printf("Lyrics found %s", string(decodedResult))
 			}
 
 			dirtyVerses = append(dirtyVerses, "\n\n")
@@ -171,22 +177,19 @@ func ScrapLetov() []domain.Song {
 		}
 
 		song.Verses = verses
-
 		songs = append(songs, song)
+
+		log.Println(len(songs))
 	})
 
+	// Start scraping on http://www.gr-oborona.ru/texts/
 	c.Visit(textsPage)
 
+	// Wait until threads are finished
+	c.Wait()
+	songCollector.Wait()
+
 	return songs
-
-	// log.Println("All songs", songs)
-
-	// for _, s := range songs {
-	// 	err := ioutil.WriteFile("output.json", []byte(s), 0644)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
 }
 
 // decode shitty cp1251 to human readalbe utf-8
