@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/extensions"
 	res "github.com/solairerove/linden-honey-go-scraper/response"
 	"golang.org/x/text/encoding/charmap"
 )
@@ -63,6 +64,8 @@ func ScrapLetov() []res.Song {
 			regexp.MustCompile(textsPage),
 		),
 	)
+
+	extensions.RandomUserAgent(c)
 
 	songCollector := c.Clone()
 
