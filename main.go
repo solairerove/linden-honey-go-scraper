@@ -9,6 +9,7 @@ import (
 
 	scraper "github.com/solairerove/linden-honey-go-scraper/scraper"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -18,7 +19,7 @@ func main() {
 	router.HandleFunc("/", index)
 	router.HandleFunc("/songs", songs)
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":8080", handlers.CompressHandler(router)))
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
