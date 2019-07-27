@@ -5,7 +5,6 @@ import (
 	"log"
 	"regexp"
 	"runtime"
-	"strings"
 
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/extensions"
@@ -47,7 +46,7 @@ func (r *myRexexp) findStringSubmatchMap(s string) map[string]string {
 // ScrapLetov poor Letov
 func ScrapLetov() []res.Song {
 
-	var song res.Song
+	// var song res.Song
 	var songs []res.Song
 
 	// Instantiate default collector
@@ -61,9 +60,9 @@ func ScrapLetov() []res.Song {
 		colly.Async(true),
 
 		// Visit only root url and urls which start with "text" on www.gr-oborona.ru
-		colly.URLFilters(
-			regexp.MustCompile(textsPage),
-		),
+		// colly.URLFilters(
+		// regexp.MustCompile(textsPage),
+		// ),
 	)
 
 	extensions.RandomUserAgent(c)
@@ -73,124 +72,173 @@ func ScrapLetov() []res.Song {
 	// Limit the maximum parallelism to cpu num
 	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
 
-	// On every a element which has href attribute call callback
-	c.OnHTML(`a[href]`, func(e *colly.HTMLElement) {
-		link := e.Attr("href")
+	c.OnHTML(`ul[id=abc_list]`, func(e *colly.HTMLElement) {
+		e.ForEach("li", func(_ int, elem *colly.HTMLElement) {
+			elem.ForEach("a", func(_ int, link *colly.HTMLElement) {
+				// fmt.Println(link.Attr("href")[7:17])
+				fullLink := fmt.Sprintf("http://%s/text_print.php?area=go_texts&id=%s", allowedDomain, link.Attr("href")[7:17])
+				// log.Println(fullLink)
 
-		// ignore self link
-		if e.Text == "" {
-			return
-		}
-
-		// Print link
-		decodedSongTitle := decodeWindows1251([]byte(e.Text))
-		log.Printf("Song title found: %q\n", decodedSongTitle)
-
-		// Visit link found on page
-		// Only those links are visited which are in AllowedDomains
-		songCollector.Visit(e.Request.AbsoluteURL(link))
+				songCollector.Visit(fullLink)
+			})
+		})
 	})
+
+	// On every a element which has href attribute call callback
+	// c.OnHTML(`a[href]`, func(e *colly.HTMLElement) {
+	// link := e.Attr("href")
+
+	// ignore self link
+	// if e.Text == "" {
+	// 	return
+	// }
+
+	// Print link
+	// decodedSongTitle := decodeWindows1251([]byte(e.Text))
+	// log.Printf("Song title found: %q\n", decodedSongTitle)
+
+	// Visit link found on page
+	// Only those links are visited which are in AllowedDomains
+	// 	songCollector.Visit(e.Request.AbsoluteURL(link))
+	// })
 
 	// Before making a request print "Visiting ..."
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL.String())
-	})
+	// c.OnRequest(func(r *colly.Request) {
+	// 	fmt.Println("Visiting", r.URL.String())
+	// })
 
 	// Limit the maximum parallelism to cpu num
 	songCollector.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
 
-	// On every a element which has `div[id=headers]` attribute call callback
-	// to fetch song title
-	songCollector.OnHTML(`div[id=headers]`, func(e *colly.HTMLElement) {
-		title := e.ChildText("h3")
-		decodedTitle := decodeWindows1251([]byte(title))
-		song.Title = string(decodedTitle)
-	})
+	// Before making a request print "Visiting ..."
+	// songCollector.OnRequest(func(r *colly.Request) {
+	// 	fmt.Println("Visiting", r.URL.String())
+	// })
 
-	// On every a element which has `div[id=cont]` attribute call callback
-	songCollector.OnHTML(`div[id=cont]`, func(e *colly.HTMLElement) {
-		// log.Println("Song link found", e.Request.URL)
-
+	songCollector.OnHTML(`body`, func(e *colly.HTMLElement) {
+		var song res.Song
 		song.Link = e.Request.URL.String()
 
-		// for each header element
-		e.ForEach("p", func(_ int, elem *colly.HTMLElement) {
-			decodedSmth := decodeWindows1251([]byte(elem.Text))
-			// log.Printf("Just print from song header %s", decodedSmth)
+		title := e.ChildText("h2")
+		decodedTitle := decodeWindows1251([]byte(title))
+		song.Title = string(decodedTitle)
+		// log.Println(string(decodedTitle))
 
-			// substring after Автор:
-			if strings.Contains(string(decodedSmth), "Автор") {
-				rau := myRexexp{regexp.MustCompile("(?:Автор:[\\s])(?P<author>.+)")}
-				song.Author = rau.findStringSubmatchMap(string(decodedSmth))["author"]
+		e.ForEach("p", func(i int, elem *colly.HTMLElement) {
+			// TODO to switch case statement
+			if i == 0 {
+				decodedAuthor := decodeWindows1251([]byte(elem.Text))
+				song.Author = string(decodedAuthor)
+				// log.Println(string(decodedAuthor))
 			}
+			if i == 1 {
+				decodedAlbum := decodeWindows1251([]byte(elem.Text))
+				song.Album = string(decodedAlbum)
+				// log.Println(string(decodedAlbum))
+			}
+			if i == 2 {
 
-			// substring after Альбом:
-			if strings.Contains(string(decodedSmth), "Альбом") {
-				ral := myRexexp{regexp.MustCompile("(?:Альбом:[\\s])(?P<album>.+)")}
-				song.Album = ral.findStringSubmatchMap(string(decodedSmth))["album"]
 			}
 		})
 
-		// Find body with lyrics
-		dirtyHTML, _ := e.DOM.Html()
-
-		// fixme
-		rl := regexp.MustCompile("(</script>)(.+)(<p>)")
-		lyricHTML := rl.FindString(dirtyHTML)
-
-		// fixme
-		ril := regexp.MustCompile(`<\/p><p><strong>.+<\/strong>.+<\/p>(?P<Lyrics>.+)<p>`)
-		improvedLyricsHTML := ril.FindAllStringSubmatch(lyricHTML, -1)
-		names := ril.SubexpNames()
-
-		// if non match patter return
-		if improvedLyricsHTML == nil {
-			return
-		}
-
-		// create map with group name -> content
-		md := map[string]string{}
-		for i, n := range improvedLyricsHTML[0] {
-			md[names[i]] = n
-		}
-
-		// split to verses group
-		rlp := regexp.MustCompile(`<br/><br/>`)
-		unparsedLyrics := rlp.Split(md["Lyrics"], -1)
-
-		// split to separated verses
-		dirtyVerses := make([]string, 0)
-		for _, e := range unparsedLyrics {
-			str := regexp.MustCompile(`<br/>`).Split(e, -1)
-			for _, s := range str {
-				result := regexp.MustCompile(`&#39;`).ReplaceAllString(s, "'")
-
-				// &nbsp;
-				// &#160;
-				// &#xA0;
-				// ⌥ Opt+Space
-				// non suka breaking space replaced by human readble space
-				trimmedResult := regexp.MustCompile(" ").ReplaceAllString(result, " ")
-				decodedResult := decodeWindows1251([]byte(trimmedResult))
-				dirtyVerses = append(dirtyVerses, string(decodedResult)+"\n")
-
-				// log.Printf("Lyrics found %s", string(decodedResult))
-			}
-
-			dirtyVerses = append(dirtyVerses, "\n\n")
-		}
-
-		verses := make([]res.Verse, 0)
-
-		for i, v := range dirtyVerses {
-			verses = append(verses, res.Verse{Ordinal: i, Data: v})
-		}
-
-		song.Verses = verses
 		songs = append(songs, song)
-
-		log.Println("songs:", len(songs))
+		log.Println(len(songs))
 	})
+
+	// On every a element which has `div[id=headers]` attribute call callback
+	// to fetch song title
+	// songCollector.OnHTML(`div[id=headers]`, func(e *colly.HTMLElement) {
+	// 	title := e.ChildText("h3")
+	// 	decodedTitle := decodeWindows1251([]byte(title))
+	// 	song.Title = string(decodedTitle)
+	// 	// fmt.Println(e.Request.URL)
+	// 	// log.Println(string(decodedTitle))
+	// })
+
+	// On every a element which has `div[id=cont]` attribute call callback
+	// songCollector.OnHTML(`div[id=cont]`, func(e *colly.HTMLElement) {
+	// 	// log.Println("Song link found", e.Request.URL)
+
+	// 	song.Link = e.Request.URL.String()
+
+	// 	// for each header element
+	// 	e.ForEach("p", func(_ int, elem *colly.HTMLElement) {
+	// 		decodedSmth := decodeWindows1251([]byte(elem.Text))
+
+	// 		// substring after Автор:
+	// 		rau := myRexexp{regexp.MustCompile("(?:Автор:[\\s])(?P<author>.+)")}
+	// 		song.Author = rau.findStringSubmatchMap(string(decodedSmth))["author"]
+
+	// 		// substring after Альбом:
+	// 		// -4
+	// 		ral := myRexexp{regexp.MustCompile("(?:Альбом:[\\s])(?P<album>.+)")}
+	// 		song.Album = ral.findStringSubmatchMap(string(decodedSmth))["album"]
+	// 	})
+	// 	// fmt.Println(e.Request.URL.String())
+
+	// 	// Find body with lyrics
+	// 	dirtyHTML, _ := e.DOM.Html()
+
+	// 	// fixme
+	// 	rl := regexp.MustCompile("(</script>)(.+)(<p>)")
+	// 	lyricHTML := rl.FindString(dirtyHTML)
+
+	// 	// fixme
+	// 	ril := regexp.MustCompile(`<\/p><p><strong>.+<\/strong>.+<\/p>(?P<Lyrics>.+)<p>`)
+	// 	improvedLyricsHTML := ril.FindAllStringSubmatch(lyricHTML, -1)
+	// 	names := ril.SubexpNames()
+
+	// 	// if non match patter return
+	// 	if improvedLyricsHTML == nil {
+	// 		return
+	// 	}
+
+	// 	songs = append(songs, song)
+	// 	if len(songs) > 580 {
+	// 		log.Println("songs:", len(songs))
+	// 	}
+
+	// 	// create map with group name -> content
+	// 	md := map[string]string{}
+	// 	for i, n := range improvedLyricsHTML[0] {
+	// 		md[names[i]] = n
+	// 	}
+
+	// 	// split to verses group
+	// 	rlp := regexp.MustCompile(`<br/><br/>`)
+	// 	unparsedLyrics := rlp.Split(md["Lyrics"], -1)
+
+	// 	// split to separated verses
+	// 	dirtyVerses := make([]string, 0)
+	// 	for _, e := range unparsedLyrics {
+	// 		str := regexp.MustCompile(`<br/>`).Split(e, -1)
+	// 		for _, s := range str {
+	// 			result := regexp.MustCompile(`&#39;`).ReplaceAllString(s, "'")
+
+	// 			// &nbsp;
+	// 			// &#160;
+	// 			// &#xA0;
+	// 			// ⌥ Opt+Space
+	// 			// non suka breaking space replaced by human readble space
+	// 			trimmedResult := regexp.MustCompile(" ").ReplaceAllString(result, " ")
+	// 			decodedResult := decodeWindows1251([]byte(trimmedResult))
+	// 			dirtyVerses = append(dirtyVerses, string(decodedResult)+"\n")
+	// 		}
+
+	// 		dirtyVerses = append(dirtyVerses, "\n\n")
+	// 	}
+
+	// 	verses := make([]res.Verse, 0)
+
+	// 	for i, v := range dirtyVerses {
+	// 		verses = append(verses, res.Verse{Ordinal: i, Data: v})
+	// 	}
+
+	// 	song.Verses = verses
+	// 	// songs = append(songs, song)
+
+	// 	// log.Println("songs:", len(songs))
+	// })
 
 	// Start scraping on http://www.gr-oborona.ru/texts/
 	c.Visit(textsPage)
