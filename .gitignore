@@ -12,3 +12,5 @@
 *.out
 output.json
 /.idea/
+vendor
+bin
