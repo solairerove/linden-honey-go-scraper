@@ -23,11 +23,17 @@ func main() {
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
+	_, err := fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
+	if err != nil {
+		log.Fatalf("Something wrong with greeting endppoint: %v", err)
+	}
 }
 
 func getSongs(w http.ResponseWriter, r *http.Request) {
 	songs := scraper.ScrapLetov()
 
-	json.NewEncoder(w).Encode(songs)
+	err := json.NewEncoder(w).Encode(songs)
+	if err != nil {
+		log.Fatalf("Something wrong with json marshaling: %v", err)
+	}
 }
