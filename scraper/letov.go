@@ -103,21 +103,11 @@ func ScrapLetov() []song {
 				if strings.Contains(string(decodedAlbum), "Альбом") {
 					currentSong.Album = string(decodedAlbum)
 				} else {
-					// TODO: move to method
-					elem.DOM.Each(func(_ int, lyrics *goquery.Selection) {
-						lyrics.Contents().Each(func(i int, lyric *goquery.Selection) {
-							processLyric(lyric, &currentSong)
-						})
-					})
+					processLyrics(elem, &currentSong)
 				}
 			}
 			if i == 2 {
-				// TODO: move to method
-				elem.DOM.Each(func(_ int, lyrics *goquery.Selection) {
-					lyrics.Contents().Each(func(i int, lyric *goquery.Selection) {
-						processLyric(lyric, &currentSong)
-					})
-				})
+				processLyrics(elem, &currentSong)
 			}
 		})
 
@@ -136,6 +126,14 @@ func ScrapLetov() []song {
 	songCollector.Wait()
 
 	return songs
+}
+
+func processLyrics(elem *colly.HTMLElement, s *song) {
+	elem.DOM.Each(func(_ int, lyrics *goquery.Selection) {
+		lyrics.Contents().Each(func(i int, lyric *goquery.Selection) {
+			processLyric(lyric, s)
+		})
+	})
 }
 
 func processLyric(lyric *goquery.Selection, s *song) {
