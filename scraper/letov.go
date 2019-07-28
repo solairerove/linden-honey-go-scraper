@@ -2,9 +2,11 @@ package scrapper
 
 import (
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"log"
 	"regexp"
 	"runtime"
+	"strings"
 
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/extensions"
@@ -70,19 +72,23 @@ func ScrapLetov() []res.Song {
 	songCollector := c.Clone()
 
 	// Limit the maximum parallelism to cpu num
-	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
+	//c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: runtime.NumCPU()})
 
-	c.OnHTML(`ul[id=abc_list]`, func(e *colly.HTMLElement) {
-		e.ForEach("li", func(_ int, elem *colly.HTMLElement) {
-			elem.ForEach("a", func(_ int, link *colly.HTMLElement) {
-				// fmt.Println(link.Attr("href")[7:17])
-				fullLink := fmt.Sprintf("http://%s/text_print.php?area=go_texts&id=%s", allowedDomain, link.Attr("href")[7:17])
-				// log.Println(fullLink)
+	// On each existing text find and visit link
+	//c.OnHTML(`ul[id=abc_list]`, func(e *colly.HTMLElement) {
+	//	e.ForEach("li", func(_ int, elem *colly.HTMLElement) {
+	//		elem.ForEach("a", func(_ int, link *colly.HTMLElement) {
+	//			// fmt.Println(link.Attr("href")[7:17])
+	//			fullLink := fmt.Sprintf("http://%s/text_print.php?area=go_texts&id=%s", allowedDomain, link.Attr("href")[7:17])
+	//			// log.Println(fullLink)
+	//
+	//			songCollector.Visit(fullLink)
+	//		})
+	//	})
+	//})
 
-				songCollector.Visit(fullLink)
-			})
-		})
-	})
+	fullLink := fmt.Sprintf("http://%s/text_print.php?area=go_texts&id=%s", allowedDomain, "1056965230")
+	songCollector.Visit(fullLink)
 
 	// On every a element which has href attribute call callback
 	// c.OnHTML(`a[href]`, func(e *colly.HTMLElement) {
@@ -125,24 +131,92 @@ func ScrapLetov() []res.Song {
 		// log.Println(string(decodedTitle))
 
 		e.ForEach("p", func(i int, elem *colly.HTMLElement) {
-			// TODO to switch case statement
 			if i == 0 {
 				decodedAuthor := decodeWindows1251([]byte(elem.Text))
 				song.Author = string(decodedAuthor)
-				// log.Println(string(decodedAuthor))
 			}
 			if i == 1 {
 				decodedAlbum := decodeWindows1251([]byte(elem.Text))
-				song.Album = string(decodedAlbum)
-				// log.Println(string(decodedAlbum))
+				if strings.Contains(string(decodedAlbum), "Альбом") {
+					song.Album = string(decodedAlbum)
+				} else {
+
+					// decodedVerses := decodeWindows1251([]byte(elem.Text))
+					// log.Println(string(decodedVerses))
+					// str := regexp.MustCompile(`<br/>`).Split(elem.Text, -1)
+					// decodedVerses := decodeWindows1251([]byte(str))
+					// log.Println(str)
+					// for _, s := range []string{elem.Text} {
+					// newLines := regexp.MustCompile(`<br/>`).ReplaceAllString(elem.Text, "\n")
+
+					//dom := elem.DOM.Text()
+					//log.Println(strings.Contains(dom, `<br/>`))
+					//decodedVerses := decodeWindows1251([]byte(dom))
+					//log.Println(string(decodedVerses))
+
+					elem.DOM.Each(func(_ int, lyrics *goquery.Selection) {
+						lyrics.Contents().Each(func(i int, lyric *goquery.Selection) {
+
+							// handle spaces
+							if !lyric.Is("br") {
+								//trimmedLyric := strings.TrimSpace(lyric.Text())
+								commaLyric := regexp.MustCompile(`&#39;`).ReplaceAllString(lyric.Text(), "'")
+								nbspLyric := regexp.MustCompile(` `).ReplaceAllString(commaLyric, " ")
+								decodedLyric := decodeWindows1251([]byte(nbspLyric))
+								verse := res.Verse{
+									Data: string(decodedLyric),
+								}
+								song.Verses = append(song.Verses, verse)
+								log.Println(string(decodedLyric), "-", i)
+							} else {
+								// TODO: handle new lines?
+							}
+						})
+					})
+
+					// log.Println(dom.Children())
+					// lines := strings.Split(elem.Text, `<br/>`)
+					// brContains := strings.Contains(elem.Text, `<br/>`)
+					// log.Println(brContains)
+					// for _, l := range lines {
+					// 	result := regexp.MustCompile(`&#39;`).ReplaceAllString(l, "'")
+
+					// 	trimmedResult := regexp.MustCompile(" ").ReplaceAllString(result, " ")
+
+					// 	decodedResult := decodeWindows1251([]byte(trimmedResult))
+
+					// 	log.Println(string(decodedResult))
+					// }
+					// }
+
+					// dirtyVerses := make([]string, 0)
+					// for _, e := range elem.Text {
+					// str := regexp.MustCompile(`<br/>`).Split(e, -1)
+					// for _, s := range str {
+					// result := regexp.MustCompile(`&#39;`).ReplaceAllString(s, "'")
+
+					// &nbsp;
+					// &#160;
+					// &#xA0;
+					// ⌥ Opt+Space
+					// non suka breaking space replaced by human readble space
+					// trimmedResult := regexp.MustCompile(" ").ReplaceAllString(result, " ")
+					// decodedResult := decodeWindows1251([]byte(trimmedResult))
+					// log.Println(string(decodedVerses))
+					// dirtyVerses = append(dirtyVerses, string(decodedResult)+"\n")
+					// }
+
+					// dirtyVerses = append(dirtyVerses, "\n\n")
+					// }
+				}
 			}
 			if i == 2 {
-
+				// lyrics
 			}
 		})
 
 		songs = append(songs, song)
-		log.Println(len(songs))
+		// log.Println(len(songs))
 	})
 
 	// On every a element which has `div[id=headers]` attribute call callback
@@ -241,10 +315,10 @@ func ScrapLetov() []res.Song {
 	// })
 
 	// Start scraping on http://www.gr-oborona.ru/texts/
-	c.Visit(textsPage)
+	//c.Visit(textsPage)
 
 	// Wait until threads are finished
-	c.Wait()
+	//c.Wait()
 	songCollector.Wait()
 
 	return songs
