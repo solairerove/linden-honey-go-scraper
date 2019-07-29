@@ -1,0 +1,15 @@
+version: "3.7"
+
+services:
+  scrapper:
+    container_name: scrapper
+    image: solairerove/scrapper:latest
+    build: .
+    ports:
+      - 8080:8080
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
