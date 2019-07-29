@@ -16,6 +16,24 @@ Start application:
 go run main.go
 ```
 
+Install missing dependencies:
+
+```sh
+make install
+```
+
+Start in development mode:
+
+```sh
+make start
+```
+
+Run in docker container:
+
+```sh
+docker-compose up -d
+```
+
 ### Rest API
 
 * `/` hello
