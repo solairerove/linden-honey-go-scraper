@@ -34,6 +34,13 @@ Run in docker container:
 docker-compose up -d
 ```
 
+Go lint: 
+
+```bash
+go get golang.org/x/lint/golint
+golint ./...
+```
+
 ### Rest API
 
 * `/` hello
