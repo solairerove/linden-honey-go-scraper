@@ -16,25 +16,9 @@ Start application:
 go run main.go
 ```
 
-Install missing dependencies:
+### Go lint
 
-```sh
-make install
-```
-
-Start in development mode:
-
-```sh
-make start
-```
-
-Run in docker container:
-
-```sh
-docker-compose up -d
-```
-
-Go lint: 
+Use go linter: 
 
 ```bash
 go get golang.org/x/lint/golint

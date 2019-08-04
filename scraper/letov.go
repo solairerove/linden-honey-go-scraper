@@ -21,11 +21,17 @@ const (
 
 // Song is a entity to describe grabber results.
 type Song struct {
-	Title  string   `json:"title,omitempty"`
-	Link   string   `json:"link,omitempty"`
-	Author string   `json:"author,omitempty"`
-	Album  string   `json:"album,omitempty"`
-	Verses []string `json:"verses,omitempty"`
+	Title  string  `json:"title,omitempty"`
+	Link   string  `json:"link,omitempty"`
+	Author string  `json:"author,omitempty"`
+	Album  string  `json:"album,omitempty"`
+	Verses []Verse `json:"verses,omitempty"`
+}
+
+// Verse consist of song's line and it's order.
+type Verse struct {
+	Order int    `json:"order"`
+	Verse string `json:"verse,omitempty"`
 }
 
 // ScrapLetov poor Letov
@@ -112,6 +118,10 @@ func ScrapLetov() []Song {
 			}
 		})
 
+		for i := range currentSong.Verses {
+			currentSong.Verses[i].Order = i
+		}
+
 		songs = append(songs, currentSong)
 		log.Println(len(songs))
 	})
@@ -145,7 +155,7 @@ func processLyric(lyric *goquery.Selection, s *Song) {
 		// ⌥ Opt+Space
 		nbspLyric := regexp.MustCompile(` `).ReplaceAllString(commaLyric, " ")
 		decodedLyric := decodeWindows1251([]byte(nbspLyric))
-		s.Verses = append(s.Verses, string(decodedLyric))
+		s.Verses = append(s.Verses, Verse{Verse: string(decodedLyric)})
 		//log.Println(string(decodedLyric), "-", i)
 	} else {
 		// TODO: handle new lines?
