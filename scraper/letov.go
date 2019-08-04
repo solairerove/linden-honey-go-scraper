@@ -19,7 +19,8 @@ const (
 	maxDepth      = 1
 )
 
-type song struct {
+// Song is a entity to describe grabber results.
+type Song struct {
 	Title  string   `json:"title,omitempty"`
 	Link   string   `json:"link,omitempty"`
 	Author string   `json:"author,omitempty"`
@@ -28,10 +29,10 @@ type song struct {
 }
 
 // ScrapLetov poor Letov
-func ScrapLetov() []song {
+func ScrapLetov() []Song {
 
 	// var song res.Song
-	var songs []song
+	var songs []Song
 
 	// Instantiate default collector
 	c := colly.NewCollector(
@@ -86,7 +87,7 @@ func ScrapLetov() []song {
 	})
 
 	songCollector.OnHTML(`body`, func(e *colly.HTMLElement) {
-		var currentSong song
+		var currentSong Song
 		currentSong.Link = e.Request.URL.String()
 
 		title := e.ChildText("h2")
@@ -128,7 +129,7 @@ func ScrapLetov() []song {
 	return songs
 }
 
-func processLyrics(elem *colly.HTMLElement, s *song) {
+func processLyrics(elem *colly.HTMLElement, s *Song) {
 	elem.DOM.Each(func(_ int, lyrics *goquery.Selection) {
 		lyrics.Contents().Each(func(i int, lyric *goquery.Selection) {
 			processLyric(lyric, s)
@@ -136,7 +137,7 @@ func processLyrics(elem *colly.HTMLElement, s *song) {
 	})
 }
 
-func processLyric(lyric *goquery.Selection, s *song) {
+func processLyric(lyric *goquery.Selection, s *Song) {
 	// handle spaces
 	if !lyric.Is("br") {
 		//trimmedLyric := strings.TrimSpace(lyric.Text())
