@@ -2,8 +2,8 @@ version: "3.7"
 
 services:
   scrapper:
-    container_name: scrapper
-    image: solairerove/scrapper:latest
+    container_name: linden_honey_scraper_go
+    image: solairerove/linden_honey_scraper_go
     build: .
     ports:
       - 8080:8080
